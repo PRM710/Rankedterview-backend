@@ -1,4 +1,4 @@
-module github.com/yourusername/rankedterview-backend
+module github.com/PRM710/Rankedterview-backend
 
 go 1.21
 

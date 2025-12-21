@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/yourusername/rankedterview-backend/internal/models"
-	"github.com/yourusername/rankedterview-backend/internal/repositories"
+	"github.com/PRM710/Rankedterview-backend/internal/models"
+	"github.com/PRM710/Rankedterview-backend/internal/repositories"
 )
 
 var (

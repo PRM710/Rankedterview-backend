@@ -9,8 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/yourusername/rankedterview-backend/internal/database"
-	"github.com/yourusername/rankedterview-backend/internal/models"
+	"github.com/PRM710/Rankedterview-backend/internal/database"
+	"github.com/PRM710/Rankedterview-backend/internal/models"
 )
 
 type InterviewRepository struct {

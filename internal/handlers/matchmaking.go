@@ -6,10 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/yourusername/rankedterview-backend/internal/middleware"
-	"github.com/yourusername/rankedterview-backend/internal/services"
-	"github.com/yourusername/rankedterview-backend/internal/utils"
-	"github.com/yourusername/rankedterview-backend/internal/websocket"
+	"github.com/PRM710/Rankedterview-backend/internal/middleware"
+	"github.com/PRM710/Rankedterview-backend/internal/services"
+	"github.com/PRM710/Rankedterview-backend/internal/utils"
+	"github.com/PRM710/Rankedterview-backend/internal/websocket"
 )
 
 type MatchmakingHandler struct {

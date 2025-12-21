@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/rankedterview-backend/internal/database"
+	"github.com/PRM710/Rankedterview-backend/internal/database"
 )
 
 // RateLimiter middleware implements rate limiting using Redis

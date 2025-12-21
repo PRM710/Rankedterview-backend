@@ -9,8 +9,8 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 
-	"github.com/yourusername/rankedterview-backend/internal/config"
-	"github.com/yourusername/rankedterview-backend/internal/models"
+	"github.com/PRM710/Rankedterview-backend/internal/config"
+	"github.com/PRM710/Rankedterview-backend/internal/models"
 )
 
 type EvaluationService struct {

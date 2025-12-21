@@ -8,8 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/yourusername/rankedterview-backend/internal/database"
-	"github.com/yourusername/rankedterview-backend/internal/models"
+	"github.com/PRM710/Rankedterview-backend/internal/database"
+	"github.com/PRM710/Rankedterview-backend/internal/models"
 )
 
 type RoomRepository struct {

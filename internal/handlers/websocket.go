@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	ws "github.com/yourusername/rankedterview-backend/internal/websocket"
+	ws "github.com/PRM710/Rankedterview-backend/internal/websocket"
 )
 
 var upgrader = websocket.Upgrader{

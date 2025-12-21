@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/rankedterview-backend/pkg/logger"
+	"github.com/PRM710/Rankedterview-backend/pkg/logger"
 )
 
 // Logger middleware logs all HTTP requests

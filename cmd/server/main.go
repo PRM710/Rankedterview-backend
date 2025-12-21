@@ -13,14 +13,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"github.com/yourusername/rankedterview-backend/internal/config"
-	"github.com/yourusername/rankedterview-backend/internal/database"
-	"github.com/yourusername/rankedterview-backend/internal/handlers"
-	"github.com/yourusername/rankedterview-backend/internal/middleware"
-	"github.com/yourusername/rankedterview-backend/internal/repositories"
-	"github.com/yourusername/rankedterview-backend/internal/services"
-	"github.com/yourusername/rankedterview-backend/internal/websocket"
-	"github.com/yourusername/rankedterview-backend/pkg/logger"
+	"github.com/PRM710/Rankedterview-backend/internal/config"
+	"github.com/PRM710/Rankedterview-backend/internal/database"
+	"github.com/PRM710/Rankedterview-backend/internal/handlers"
+	"github.com/PRM710/Rankedterview-backend/internal/middleware"
+	"github.com/PRM710/Rankedterview-backend/internal/repositories"
+	"github.com/PRM710/Rankedterview-backend/internal/services"
+	"github.com/PRM710/Rankedterview-backend/internal/websocket"
+	"github.com/PRM710/Rankedterview-backend/pkg/logger"
 )
 
 func main() {

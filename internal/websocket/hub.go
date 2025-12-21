@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/rankedterview-backend/internal/database"
+	"github.com/PRM710/Rankedterview-backend/internal/database"
 )
 
 // Configuration for scalability

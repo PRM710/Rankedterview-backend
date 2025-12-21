@@ -7,10 +7,10 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/yourusername/rankedterview-backend/internal/config"
-	"github.com/yourusername/rankedterview-backend/internal/models"
-	"github.com/yourusername/rankedterview-backend/internal/repositories"
-	"github.com/yourusername/rankedterview-backend/internal/utils"
+	"github.com/PRM710/Rankedterview-backend/internal/config"
+	"github.com/PRM710/Rankedterview-backend/internal/models"
+	"github.com/PRM710/Rankedterview-backend/internal/repositories"
+	"github.com/PRM710/Rankedterview-backend/internal/utils"
 )
 
 var (
