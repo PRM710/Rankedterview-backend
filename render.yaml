@@ -1,0 +1,59 @@
+# Render Blueprint for RANKEDterview Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: rankedterview-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: oregon  # or singapore for Asia
+    plan: free  # or starter for better performance
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ENV
+        value: production
+      - key: GIN_MODE
+        value: release
+      # MongoDB - set in Render dashboard (secret)
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DATABASE
+        value: rankedterview
+      # Redis - set in Render dashboard (secret)
+      - key: REDIS_ADDR
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_DB
+        value: "0"
+      # JWT - set in Render dashboard (secret)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRATION
+        value: 168h
+      # OAuth - set in Render dashboard (secrets)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        sync: false
+      # CORS - your Vercel frontend URL
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # OpenAI (optional) - set in Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o
