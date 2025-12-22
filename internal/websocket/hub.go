@@ -288,22 +288,33 @@ func (h *Hub) invalidateRoomCache(roomID string) {
 
 // broadcastToRoomInternal broadcasts to room participants
 func (h *Hub) broadcastToRoomInternal(roomID string, payload []byte, exclude string) {
+	log.Printf("broadcastToRoomInternal: roomID=%s, exclude=%s", roomID, exclude)
+
 	participants, err := h.getRoomParticipants(roomID)
 	if err != nil {
 		log.Printf("Error getting room participants: %v", err)
 		return
 	}
 
+	log.Printf("Room %s participants from Redis: %+v", roomID, participants)
+
 	h.clientsMu.RLock()
 	defer h.clientsMu.RUnlock()
 
+	sentCount := 0
 	for key, userID := range participants {
+		log.Printf("Checking participant: key=%s, userID=%s, exclude=%s", key, userID, exclude)
 		if (key == "user1" || key == "user2") && userID != exclude {
 			if client, ok := h.clients[userID]; ok {
+				log.Printf("Sending to user %s", userID)
 				h.sendToClient(client, payload)
+				sentCount++
+			} else {
+				log.Printf("User %s not connected (not in h.clients)", userID)
 			}
 		}
 	}
+	log.Printf("broadcastToRoomInternal: sent to %d clients", sentCount)
 }
 
 // Public methods

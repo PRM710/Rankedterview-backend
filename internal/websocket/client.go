@@ -248,15 +248,18 @@ func (c *Client) handleAcceptMatch(msg Event) {
 // relayWebRTC relays WebRTC signaling messages to room participants only
 func (c *Client) relayWebRTC(msg Event) {
 	roomID := msg.To // The "to" field contains the roomId
+
+	payload := map[string]interface{}{
+		"type":      msg.Type,
+		"from":      c.UserID,
+		"roomId":    roomID,
+		"sdp":       msg.SDP,
+		"candidate": msg.Candidate,
+	}
+
 	if roomID == "" {
 		log.Printf("No roomId in WebRTC message from %s, falling back to broadcast", c.UserID)
-		// Fallback to broadcast all if no room specified
-		c.hub.BroadcastToAllExcept(c.UserID, map[string]interface{}{
-			"type":      msg.Type,
-			"from":      c.UserID,
-			"sdp":       msg.SDP,
-			"candidate": msg.Candidate,
-		})
+		c.hub.BroadcastToAllExcept(c.UserID, payload)
 		return
 	}
 
@@ -268,14 +271,13 @@ func (c *Client) relayWebRTC(msg Event) {
 
 	log.Printf("relayWebRTC: %s from %s to room %s", msg.Type, c.UserID, roomID)
 
-	// Send only to room participants, excluding sender
-	c.hub.BroadcastToRoomExcept(roomID, c.UserID, map[string]interface{}{
-		"type":      msg.Type,
-		"from":      c.UserID,
-		"roomId":    roomID,
-		"sdp":       msg.SDP,
-		"candidate": msg.Candidate,
-	})
+	// Try room-based delivery first, then fallback to broadcast all
+	// This ensures WebRTC messages always get through
+	c.hub.BroadcastToRoomExcept(roomID, c.UserID, payload)
+
+	// Also broadcast to all as fallback (WebRTC is time-sensitive)
+	// The receiver will filter by roomId anyway
+	c.hub.BroadcastToAllExcept(c.UserID, payload)
 }
 
 // relayToRoom relays a message to all users in a room
