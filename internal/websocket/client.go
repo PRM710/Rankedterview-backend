@@ -133,6 +133,9 @@ func (c *Client) handleMessage(message []byte) {
 		return
 	}
 
+	// Debug: log ALL incoming messages
+	log.Printf("handleMessage: type=%s, from=%s, to=%s, roomId=%s", msg.Type, c.UserID, msg.To, msg.RoomID)
+
 	// Handle different event types
 	switch msg.Type {
 	case "ping":
