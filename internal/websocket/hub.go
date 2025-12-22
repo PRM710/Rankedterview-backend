@@ -122,12 +122,22 @@ func (h *Hub) broadcastWorker(workerID int) {
 func (h *Hub) registerClient(client *Client) {
 	h.clientsMu.Lock()
 
-	// Check if user already has a connection (handle reconnection gracefully)
+	// Check if user already has a connection
 	if existingClient, ok := h.clients[client.UserID]; ok {
-		// Close the old connection
-		log.Printf("User %s reconnecting, closing old connection", client.UserID)
-		close(existingClient.send)
-		delete(h.clients, client.UserID)
+		// Just log it - DON'T close the old connection
+		// The old connection will naturally close when ping/pong times out
+		// Closing it causes a reconnect loop on the frontend
+		log.Printf("User %s has existing connection, replacing with new one", client.UserID)
+
+		// Close the old connection's underlying websocket to free resources
+		// but don't close the send channel (that causes the reconnect loop)
+		go func(oldClient *Client) {
+			// Give the old client a moment to process, then close the conn
+			time.Sleep(100 * time.Millisecond)
+			if oldClient.conn != nil {
+				oldClient.conn.Close()
+			}
+		}(existingClient)
 	}
 
 	h.clients[client.UserID] = client
