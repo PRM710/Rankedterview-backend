@@ -4,59 +4,56 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
-	// Time allowed to write a message to the peer
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer
-	pongWait = 60 * time.Second
-
-	// Send pings to peer with this period (must be less than pongWait)
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer
-	maxMessageSize = 512 * 1024 // 512 KB
+	writeWait      = 10 * time.Second
+	pongWait       = 60 * time.Second
+	pingPeriod     = (pongWait * 9) / 10
+	maxMessageSize = 512 * 1024 // 512KB
 )
 
-// Client represents a WebSocket client
+// Client represents a WebSocket client connection
 type Client struct {
-	// The WebSocket connection
-	conn *websocket.Conn
-
-	// User ID
+	hub    *Hub
+	conn   *websocket.Conn
+	send   chan []byte
 	UserID string
-
-	// Current Room ID (if in interview)
 	RoomID string
-
-	// Buffered channel of outbound messages
-	send chan []byte
-
-	// Hub reference
-	hub *Hub
 }
 
-// NewClient creates a new WebSocket client
-func NewClient(conn *websocket.Conn, userID string, hub *Hub) *Client {
+// NewClient creates a new client
+func NewClient(hub *Hub, conn *websocket.Conn, userID string) *Client {
 	return &Client{
-		conn:   conn,
-		UserID: userID,
-		RoomID: "",
-		send:   make(chan []byte, 256),
 		hub:    hub,
+		conn:   conn,
+		send:   make(chan []byte, 256),
+		UserID: userID,
+	}
+}
+
+// Send sends a message to the client
+func (c *Client) Send(data map[string]interface{}) error {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case c.send <- payload:
+		return nil
+	default:
+		return nil // Drop if buffer full
 	}
 }
 
 // ReadPump pumps messages from the WebSocket connection to the hub
 func (c *Client) ReadPump() {
 	defer func() {
-		c.hub.Unregister(c)
+		c.hub.unregister <- c
 		c.conn.Close()
 	}()
 
@@ -75,8 +72,6 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
-
-		// Handle incoming message
 		c.handleMessage(message)
 	}
 }
@@ -179,10 +174,7 @@ func (c *Client) handleMessage(message []byte) {
 		c.relayToRoom(msg)
 
 	default:
-		// Only log truly unknown events (not empty or common noise)
-		if msg.Type != "" {
-			log.Printf("Unknown event type: %s from user %s", msg.Type, c.UserID)
-		}
+		log.Printf("Unknown event type: %s", msg.Type)
 	}
 }
 
@@ -196,40 +188,44 @@ func (c *Client) handleAcceptMatch(msg Event) {
 
 	log.Printf("User %s accepted match for room %s", c.UserID, roomID)
 
-	// Store acceptance in Redis
 	ctx := context.Background()
-	acceptKey := "room:" + roomID + ":accepted"
 
-	// Add this user to the accepted set
+	// Track which users have accepted this match
+	acceptKey := "match:" + roomID + ":accepted"
+
+	// Add this user to the set of users who have accepted
 	c.hub.redis.SAdd(ctx, acceptKey, c.UserID)
-	c.hub.redis.Expire(ctx, acceptKey, 5*time.Minute)
+	c.hub.redis.Expire(ctx, acceptKey, 2*time.Minute)
 
 	// Check how many users have accepted
-	acceptedUsers, _ := c.hub.redis.SMembers(ctx, acceptKey)
-	log.Printf("Accepted users for room %s: %v", roomID, acceptedUsers)
+	acceptedUsers, err := c.hub.redis.SMembers(ctx, acceptKey)
+	if err != nil {
+		log.Printf("Error getting accepted users: %v", err)
+		return
+	}
+
+	log.Printf("Room %s accepted users: %v (count: %d)", roomID, acceptedUsers, len(acceptedUsers))
 
 	if len(acceptedUsers) == 1 {
-		// Only one user accepted so far - notify the other user
-		// First, get the room participants
+		// First user accepted - notify them to wait
+		c.Send(map[string]interface{}{
+			"type":    EventPartnerAccepted,
+			"message": "Waiting for partner to accept...",
+		})
+	}
+
+	if len(acceptedUsers) >= 2 {
+		// Both users accepted - notify everyone to start the call
+		log.Printf("Both users accepted for room %s, notifying with roles", roomID)
+
+		// Get room participants from Redis
 		roomKey := "room:" + roomID
-		participants, _ := c.hub.redis.HGetAll(ctx, roomKey)
-
-		// Find the other user and notify them
-		for key, userID := range participants {
-			if (key == "user1" || key == "user2") && userID != c.UserID {
-				c.hub.BroadcastToUser(userID, map[string]interface{}{
-					"type":   EventPartnerAccepted,
-					"roomId": roomID,
-				})
-			}
+		participants, err := c.hub.redis.HGetAll(ctx, roomKey)
+		if err != nil {
+			log.Printf("Error getting room participants: %v", err)
 		}
-	} else if len(acceptedUsers) >= 2 {
-		// Both users accepted! Determine roles and notify both
-		// Sort users for deterministic role assignment (alphabetically)
-		sort.Strings(acceptedUsers)
 
-		log.Printf("Sorted accepted users for room %s: %v", roomID, acceptedUsers)
-
+		// Determine caller/callee - first to accept is caller
 		for i, userID := range acceptedUsers {
 			role := "caller"
 			if i == 1 {
@@ -241,6 +237,16 @@ func (c *Client) handleAcceptMatch(msg Event) {
 				"roomId": roomID,
 				"role":   role,
 			})
+		}
+
+		// Also notify room participants who might have different IDs
+		for key, userID := range participants {
+			if (key == "user1" || key == "user2") && userID != c.UserID {
+				c.hub.BroadcastToUser(userID, map[string]interface{}{
+					"type":   EventPartnerAccepted,
+					"roomId": roomID,
+				})
+			}
 		}
 
 		// Clean up the acceptance key
@@ -289,62 +295,50 @@ func (c *Client) relayToRoom(msg Event) {
 		return
 	}
 
-	c.hub.BroadcastToRoom(msg.RoomID, map[string]interface{}{
-		"type":   msg.Type,
-		"from":   c.UserID,
-		"roomId": msg.RoomID,
-		"data":   msg.Data,
+	c.hub.BroadcastToRoomExcept(msg.RoomID, c.UserID, map[string]interface{}{
+		"type":    msg.Type,
+		"from":    c.UserID,
+		"roomId":  msg.RoomID,
+		"message": msg.Data["message"],
 	})
 }
 
-// handleCallEnded handles when a user ends the call and notifies room participants
+// handleCallEnded handles when a user ends a call
 func (c *Client) handleCallEnded(msg Event) {
 	roomID := msg.RoomID
 	if roomID == "" {
-		log.Printf("No roomId in call_ended from %s", c.UserID)
+		roomID = c.RoomID
+	}
+
+	if roomID == "" {
 		return
 	}
 
 	log.Printf("User %s ended call in room %s", c.UserID, roomID)
 
-	// Notify other room participants (not the sender)
 	c.hub.BroadcastToRoomExcept(roomID, c.UserID, map[string]interface{}{
-		"type":   "call_ended",
+		"type":   EventCallEnd,
 		"from":   c.UserID,
 		"roomId": roomID,
 	})
 }
 
-// handleMediaStateChanged handles when a user toggles mic/camera
+// handleMediaStateChanged handles when a user changes their media state (mute/video toggle)
 func (c *Client) handleMediaStateChanged(msg Event) {
 	roomID := msg.RoomID
 	if roomID == "" {
-		log.Printf("No roomId in media_state_changed from %s", c.UserID)
+		roomID = c.RoomID
+	}
+
+	if roomID == "" {
 		return
 	}
 
-	// Relay to other room participants
 	c.hub.BroadcastToRoomExcept(roomID, c.UserID, map[string]interface{}{
-		"type":       "media_state_changed",
+		"type":       EventMediaStateChange,
 		"from":       c.UserID,
 		"roomId":     roomID,
 		"isMuted":    msg.Data["isMuted"],
 		"isVideoOff": msg.Data["isVideoOff"],
 	})
-}
-
-// Send sends a message to the client
-func (c *Client) Send(data map[string]interface{}) {
-	payload, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("Error marshaling data: %v", err)
-		return
-	}
-
-	select {
-	case c.send <- payload:
-	default:
-		// Send buffer is full
-		log.Printf("Send buffer full for user %s", c.UserID)
-	}
 }
