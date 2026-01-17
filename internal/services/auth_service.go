@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,9 +16,9 @@ import (
 )
 
 var (
-	ErrUserExists      = errors.New("user already exists")
+	ErrUserExists         = errors.New("user already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound    = errors.New("user not found")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 type AuthService struct {
@@ -35,7 +37,7 @@ func NewAuthService(userRepo *repositories.UserRepository, cfg *config.Config) *
 func (s *AuthService) RegisterWithOAuth(ctx context.Context, provider, oauthID, email, name, avatar string) (*models.User, string, error) {
 	// Check if user already exists
 	existingUser, err := s.userRepo.FindByOAuthID(ctx, provider, oauthID)
-	
+
 	if err == nil {
 		// User exists, update last login and return token
 		s.userRepo.UpdateLastLogin(ctx, existingUser.ID.Hex())
@@ -111,13 +113,19 @@ func (s *AuthService) generateToken(user *models.User) (string, error) {
 
 // GetOAuthURL generates the OAuth URL for a provider
 func (s *AuthService) GetOAuthURL(provider string) (string, error) {
-	// This would integrate with the oauth package
-	// For now, return placeholder
 	switch provider {
 	case "google":
-		return s.config.GoogleRedirectURI, nil
+		return fmt.Sprintf(
+			"https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=openid%%20email%%20profile&access_type=offline",
+			s.config.GoogleClientID,
+			url.QueryEscape(s.config.GoogleRedirectURI),
+		), nil
 	case "github":
-		return s.config.GitHubRedirectURI, nil
+		return fmt.Sprintf(
+			"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user:email",
+			s.config.GitHubClientID,
+			url.QueryEscape(s.config.GitHubRedirectURI),
+		), nil
 	default:
 		return "", errors.New("unsupported OAuth provider")
 	}
